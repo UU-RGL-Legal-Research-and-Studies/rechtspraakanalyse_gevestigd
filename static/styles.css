@@ -1,0 +1,30 @@
+.tabs {
+  border: 1px solid #ccc;
+  margin: 20px;
+}
+
+.tab-headers {
+  display: flex;
+}
+
+.tab-header {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #ccc;
+}
+
+.tab-header.active {
+  border-bottom: 2px solid #30343b;
+}
+
+.tab-contents {
+  padding: 20px;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}

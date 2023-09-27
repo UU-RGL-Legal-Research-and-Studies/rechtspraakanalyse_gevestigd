@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> <!-- Responsiveness meta tag -->
+    <title>ECLI Search</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        .tabs {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 20px;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .tab-headers {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .tab-header {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            font-size: 16px;
+        }
+
+        .tab-header.active {
+            background-color: #30343b;
+            color: white;
+            border-bottom: 2px solid #30343b;
+        }
+
+        .tab-contents {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-top: none;
+            padding: 20px;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table Styles */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #30343b;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* Container Style */
+        .container {
+            background-color: #fff;
+        }
+
+        .download-button{
+            background-color: #30343b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .tooltip-inner {
+            max-width: 400px; /* Stel hier de gewenste maximale breedte in. */
+            width: auto; /* Dit zorgt ervoor dat de breedte zich aanpast aan de inhoud, tot aan de maximale breedte. */
+            text-align: left;
+        }
+
+    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>    
+</head>
+<body>
+    <div class="container-fluid"> <!-- Bootstrap container for responsiveness -->
+        <div class="tabs">
+            <div class="tab-headers">
+                <div class="tab-header active" onclick="showTab(1)">Home</div>
+                <div class="tab-header active" onclick="showTab(0)">Databases</div>
+            </div>
+            <div class="tab-contents">
+                <div class="tab-content active">
+                    <div class="container">
+                        <h1>ECLI Database Search</h1>
+                        <label for="database_select">Select Database:</label>
+                        <select id="database_select" name="database" onchange="document.forms[0].submit()">
+                            <option value="db1">Affectieschade</option>
+                        </select>
+
+                        <form method="post">
+                            <label for="search_terms">Search Terms:</label>
+                            <input type="text" id="search_terms" name="search_terms" class="form-control"> <!-- Bootstrap class for styling -->
+                            <input type="submit" value="Search" class="btn btn-secondary mt-2"> <!-- Bootstrap classes for styling -->
+                            <label for="search_guidance" 
+                                data-toggle="tooltip" data-placement="right" title="
+                                • De eerste zoekopdracht duurt even. Daarna zijn de uitspraken geladen.<br>
+                                • Gebruik een komma om zoektermen te scheiden.<br>
+                                • Gebruik '|' voor synoniemen (bijv. expert|deskundige).<br>
+                                • Resultaten zijn gebaseerd op aanwezigheid zoektermen in één paragraaf van de uitspraak.<br>
+                                • Cursief gedrukte termen zijn bij uitspraken één paragraaf.">*</label>
+                        </form>
+                        
+                        <a href="/download/excel" class="btn btn-secondary mt-2">Download Excel</a> <!-- Bootstrap class for styling -->
+
+                        <h2>Search Results: <span>{{ search_results_count }}</span></h2>
+                        <!-- rest of your template -->
+
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ECLI</th>
+                                    <th>Result</th>
+                                    <th>Navigate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ecli, data in ECLI_texts.items() %}
+                                    <tr>
+                                        <td>{{ ecli }}</td>
+                                        <td>{{ data['texts'][data['current_index']] if data['texts'] else 'No result' }}</td>
+                                        <td>
+                                            <a href="/previous/{{ ecli }}" class="nav-button" onclick="saveScrollPosition();">Previous</a>
+                                            <a href="/next/{{ ecli }}" class="nav-button" onclick="saveScrollPosition();">Next</a>
+                                            <a href="/delete/{{ ecli }}" class="nav-button" onclick="saveScrollPosition();">Delete</a>
+                                            {{ data['current_index'] + 1 }} / {{ data['texts']|length }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                    </div>
+                </div>
+                <div class="tab-content">
+                    <!-- Nieuwe inhoud voor het Home-tabblad gaat hier -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(index) {
+            var headers = document.querySelectorAll('.tab-header');
+            var contents = document.querySelectorAll('.tab-content');
+
+            headers.forEach(function(header, i) {
+                header.classList.toggle('active', i === index);
+            });
+
+            contents.forEach(function(content, i) {
+                content.classList.toggle('active', i === index);
+            });
+        }
+
+        window.onload = function() {
+            // Check if a scroll position is stored in localStorage and restore it
+            if (localStorage.getItem("scrollPosition")) {
+                window.scrollTo({
+                    top: localStorage.getItem("scrollPosition"),
+                    behavior: 'smooth'  //to ensure the scrolling goes smoothly
+                });
+                localStorage.removeItem("scrollPosition");  // Remove the stored scroll position
+            }
+        }
+
+        function saveScrollPosition() {
+            // Store the current scroll position in localStorage before making a request
+            localStorage.setItem("scrollPosition", window.scrollY);
+        }
+
+        function updateFormAction() {
+            var selectedDatabase = document.getElementById('database_select').value;
+            var searchForm = document.getElementById('search_form');
+            searchForm.action = '/search/' + selectedDatabase;
+        }
+        
+        $(document).ready(function(){
+            $('[data-toggle="tooltip"]').tooltip({html: true});
+        });
+
+    </script>
+</body>
+</html>
