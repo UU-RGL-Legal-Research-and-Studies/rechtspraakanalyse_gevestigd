@@ -6,6 +6,9 @@ from io import BytesIO
 import tempfile
 from ECLI_affectieschade1 import unique_list
 import pickle
+import shutil
+import os
+import time
 
 app = Flask(__name__)
 app.secret_key = 'hello_world'
@@ -18,16 +21,34 @@ ECLI_cache = {}  # Cache for XML roots
 
 def api_request(ecli):
     if ecli in ECLI_cache:
-        return ECLI_cache[ecli]
+        # Laad de XML-root van het tijdelijke bestand
+        with open(ECLI_cache[ecli], 'rb') as temp_file:
+            root = ET.parse(temp_file).getroot()
+        return root
 
-    # Uncomment this section when you run the code
-
+    # Voer de API-aanvraag uit
     url = f"https://data.rechtspraak.nl/uitspraken/content?id={ecli}"
-    response = requests.get(url)
-    root = ET.fromstring(response.content)
-        
-    ECLI_cache[ecli] = root
+    response = requests.get(url, stream=True)
+
+    # Maak een tijdelijk bestand en schrijf de respons erin
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.xml') as temp_file:
+        shutil.copyfileobj(response.raw, temp_file)
+
+    # Sla het pad naar het tijdelijke bestand op in de cache
+    ECLI_cache[ecli] = temp_file.name
+
+    # Laad de XML-root van het tijdelijke bestand
+    with open(temp_file.name, 'rb') as temp_file:
+        root = ET.parse(temp_file).getroot()
+
     return root
+
+@app.route('/start_request', methods=['POST'])
+def start_request():
+    # Simulate API request
+    time.sleep(5)  # Simulate a long API request
+    return '', 200  # Return a success response
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -90,7 +111,8 @@ def next(ecli):
 @app.route('/delete/<ecli>', methods=['GET'])
 def delete(ecli):
     if ecli in ECLI_texts:
-        ECLI_texts[ecli]['texts'][ECLI_texts[ecli]['current_index']] = 'No result'
+        del ECLI_texts[ecli]['texts'][ECLI_texts[ecli]['current_index']]
+        ECLI_texts[ecli]['texts'] = [text for text in ECLI_texts[ecli]['texts'] if text]  # remove any empty strings which may occur due to deletion
     update_excel_file()
     return redirect(url_for('index'))
 
@@ -106,6 +128,10 @@ def download_excel():
         )
     else:
         return "No Excel file generated", 404
+
+# Vergeet niet om de tijdelijke bestanden op te ruimen wanneer u klaar bent!
+for temp_file_path in ECLI_cache.values():
+    os.remove(temp_file_path)
 
 if __name__ == '__main__':
     app.run(debug=True)

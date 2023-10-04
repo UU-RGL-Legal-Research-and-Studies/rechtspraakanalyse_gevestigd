@@ -119,12 +119,14 @@
                 <div class="tab-content active">
                     <div class="container">
                         <h1>ECLI Database Search</h1>
+                        <!-- Loading GIF -->
+                        <img id="loading-gif" src="https://c.tenor.com/I6kN-6X7nhAAAAAj/loading-buffering.gif" style="display:none;" width="50" height="50">
+                        
                         <label for="database_select">Select Database:</label>
                         <select id="database_select" name="database" onchange="document.forms[0].submit()">
                             <option value="db1">Affectieschade</option>
                         </select>
-
-                        <form method="post">
+                        <form method="post" onsubmit="showLoading();">
                             <label for="search_terms">Search Terms:</label>
                             <input type="text" id="search_terms" name="search_terms" class="form-control"> <!-- Bootstrap class for styling -->
                             <input type="submit" value="Search" class="btn btn-secondary mt-2"> <!-- Bootstrap classes for styling -->
@@ -204,6 +206,19 @@
         function saveScrollPosition() {
             // Store the current scroll position in localStorage before making a request
             localStorage.setItem("scrollPosition", window.scrollY);
+        }
+
+        function showLoading() {
+            document.getElementById('loading-gif').style.display = 'inline';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-gif').style.display = 'none';
+        }
+
+        window.onload = function() {
+            hideLoading();  // Hide loading GIF when page is loaded
+            // (rest of your onload function)
         }
 
         function updateFormAction() {
