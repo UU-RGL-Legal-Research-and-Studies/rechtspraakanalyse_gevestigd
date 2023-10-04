@@ -63,7 +63,9 @@ def index():
         # waar elke lijst synoniemen bevat die door de gebruiker zijn ingevoerd
         search_terms = [term.split('|') for term in raw_search_terms]
         
+        previous_ECLI_texts = ECLI_texts.copy()  # Maak een kopie van de huidige staat
         ECLI_texts = {}
+        
         for ecli in ECLIs:
             root = api_request(ecli)
             # Verzamel alle teksten die voldoen aan de zoekcriteria
@@ -73,6 +75,10 @@ def index():
             )]
             ECLI_texts[ecli] = {'texts': texts, 'current_index': 0}
             search_results_count += len(texts)  # Update search results count
+
+        # Als ECLI_texts is gewijzigd, update het Excel-bestand
+        if ECLI_texts != previous_ECLI_texts:
+            update_excel_file()
 
     return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
 
