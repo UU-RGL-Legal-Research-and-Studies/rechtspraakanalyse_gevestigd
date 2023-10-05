@@ -157,7 +157,8 @@
                                 {% for ecli, data in ECLI_texts.items() %}
                                     <tr>
                                         <td>{{ ecli }}</td>
-                                        <td>{{ data['texts'][data['current_index']] if data['texts'] else 'No result' }}</td>
+                                        <td>{{ (data['texts'][data['current_index']]|safe) if data['texts'] else 'No result' }}</td>
+
                                         <td>
                                             <a href="/previous/{{ ecli }}" class="nav-button" onclick="saveScrollPosition();">Previous</a>
                                             <a href="/next/{{ ecli }}" class="nav-button" onclick="saveScrollPosition();">Next</a>
