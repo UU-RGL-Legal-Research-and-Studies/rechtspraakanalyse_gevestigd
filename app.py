@@ -19,6 +19,9 @@ ECLIs.sort(reverse=True)
 ECLI_texts = {} # ECLI_texts[ecli] = {'texts': [], 'current_index': 0}
 ECLI_cache = {}  # Cache for XML roots
 
+def highlight_term(text, term):
+    return text.replace(term, f'<span class="highlight">{term}</span>')
+
 def api_request(ecli):
     if ecli in ECLI_cache:
         # Laad de XML-root van het tijdelijke bestand
@@ -63,9 +66,7 @@ def index():
         # waar elke lijst synoniemen bevat die door de gebruiker zijn ingevoerd
         search_terms = [term.split('|') for term in raw_search_terms]
         
-        previous_ECLI_texts = ECLI_texts.copy()  # Maak een kopie van de huidige staat
         ECLI_texts = {}
-        
         for ecli in ECLIs:
             root = api_request(ecli)
             # Verzamel alle teksten die voldoen aan de zoekcriteria
@@ -73,12 +74,15 @@ def index():
                 any(synonym.lower() in elem.text.lower() for synonym in term)
                 for term in search_terms
             )]
-            ECLI_texts[ecli] = {'texts': texts, 'current_index': 0}
-            search_results_count += len(texts)  # Update search results count
-
-        # Als ECLI_texts is gewijzigd, update het Excel-bestand
-        if ECLI_texts != previous_ECLI_texts:
-            update_excel_file()
+            # Voeg de gemarkeerde tekst toe
+            highlighted_texts = []
+            for text in texts:
+                for term_group in search_terms:
+                    for synonym in term_group:
+                        text = highlight_term(text, synonym)
+                highlighted_texts.append(text)
+            ECLI_texts[ecli] = {'texts': highlighted_texts, 'current_index': 0}
+            search_results_count += len(highlighted_texts)  # Update search results count
 
     return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
 
