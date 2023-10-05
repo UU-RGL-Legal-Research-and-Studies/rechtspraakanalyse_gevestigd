@@ -201,6 +201,8 @@
                 });
                 localStorage.removeItem("scrollPosition");  // Remove the stored scroll position
             }
+            hideLoading();  // Hide loading GIF when page is loaded
+            // (rest of your onload function)
         }
 
         function saveScrollPosition() {
@@ -214,11 +216,6 @@
 
         function hideLoading() {
             document.getElementById('loading-gif').style.display = 'none';
-        }
-
-        window.onload = function() {
-            hideLoading();  // Hide loading GIF when page is loaded
-            // (rest of your onload function)
         }
 
         function updateFormAction() {
