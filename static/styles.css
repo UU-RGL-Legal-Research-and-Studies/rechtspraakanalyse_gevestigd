@@ -3,6 +3,11 @@
   margin: 20px;
 }
 
+.highlight {
+  background-color: #ffff00; /* Geel, maar je kunt elke kleur kiezen die je wilt */
+  font-weight: bold; /* Als je de gemarkeerde tekst vetgedrukt wilt hebben */
+}
+
 .tab-headers {
   display: flex;
 }
