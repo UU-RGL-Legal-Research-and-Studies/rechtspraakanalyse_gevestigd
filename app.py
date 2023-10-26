@@ -11,7 +11,6 @@ import os
 import time
 
 app = Flask(__name__)
-app.secret_key = 'hello_world'
 
 # # Sample ECLIs
 ECLIs = unique_list #list from other file where ECLIs have been subtracted (using Webparsing)
