@@ -19,7 +19,8 @@ ECLI_texts = {} # ECLI_texts[ecli] = {'texts': [], 'current_index': 0}
 ECLI_cache = {}  # Cache for XML roots
 
 def highlight_term(text, term):
-    return text.replace(term, f'<span class="highlight">{term}</span>')
+    return text.replace(term, term)
+    #return text.replace(term, f'<span class="highlight">{term}</span>')
 
 def api_request(ecli):
     if ecli in ECLI_cache:
