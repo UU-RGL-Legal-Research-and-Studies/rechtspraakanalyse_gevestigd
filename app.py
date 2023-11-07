@@ -9,6 +9,7 @@ import pickle
 import shutil
 import os
 import time
+import re
 
 app = Flask(__name__)
 app.secret_key = 'hello_world'
@@ -20,8 +21,8 @@ ECLI_texts = {} # ECLI_texts[ecli] = {'texts': [], 'current_index': 0}
 ECLI_cache = {}  # Cache for XML roots
 
 def highlight_term(text, term):
-    return text.replace(term, term)
-    #return text.replace(term, f'<span class="highlight">{term}</span>')
+    #return text.replace(term, term)
+    return text.replace(term, f'<span class="highlight">{term}</span>')
 
 def api_request(ecli):
     if ecli in ECLI_cache:
@@ -87,9 +88,16 @@ def index():
 
     return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
 
+def remove_html_tags(text):
+    """Verwijder HTML-tags uit een string"""
+    clean = re.compile('<.*?>')
+    return re.sub(clean, '', text)
+
 def update_excel_file():
-    df = pd.DataFrame([(ecli, texts['texts'][ECLI_texts[ecli]['current_index']] if texts['texts'] else 'none') 
-                       for ecli, texts in ECLI_texts.items()], columns=['ECLI', 'Result'])
+    df = pd.DataFrame([
+        (ecli, remove_html_tags(texts['texts'][ECLI_texts[ecli]['current_index']]) if texts['texts'] else 'none') 
+        for ecli, texts in ECLI_texts.items()
+    ], columns=['ECLI', 'Result'])
 
     with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_file:
         df.to_excel(temp_file, index=False)
