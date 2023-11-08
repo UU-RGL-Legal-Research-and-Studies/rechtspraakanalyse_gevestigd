@@ -1,28 +1,29 @@
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 # Setup webdriver
 s = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=s)
 
 # Navigate to webpage
-driver.get('https://uitspraken.rechtspraak.nl/#!/resultaat?zoekterm=affectieschade&inhoudsindicatie=zt0&sort=Relevance&publicatiestatus=ps1&uitspraakdatumrange=na&uitspraakdatuma=01-01-2019&rechtsgebied=r3')
-
+driver.get('https://uitspraken.rechtspraak.nl/#!/resultaat?zoekterm=affectieschade&inhoudsindicatie=zt0&sort=Relevance&publicatiestatus=ps1&uitspraakdatumrange=tussen&uitspraakdatuma=01-01-2019&uitspraakdatumb=31-10-2023&rechtsgebied=r3')
 wait = WebDriverWait(driver, 10)
 
 while True:
     try:
-        # Wacht tot de 'Laad meer resultaten' knop zichtbaar is en klik erop
-        load_more_button = wait.until(EC.visibility_of_element_located((By.ID, 'lib-rnl-lib-rnl-laadMeerBtn')))
-        load_more_button.click()
+        # Wacht tot de 'Laad meer resultaten' knop interacteerbaar is
+        load_more_button = wait.until(EC.element_to_be_clickable((By.ID, 'lib-rnl-lib-rnl-laadMeerBtn')))
+        
+        # Gebruik JavaScript om op de knop te klikken
+        driver.execute_script("arguments[0].click();", load_more_button)
 
-        # Optionele pauze om te zorgen dat de pagina volledig is geladen
-        driver.implicitly_wait(5)
+        # Wacht tot de nieuwe resultaten zijn geladen
+        time.sleep(5)  # Pas de slaaptijd aan indien nodig voor jouw verbinding en de snelheid van de website
     except Exception as e:
         print("Kan niet meer resultaten laden of er is een andere fout opgetreden:", e)
         break
@@ -46,5 +47,6 @@ for text in elements_list:
 print(len(split_texts))
 print(split_texts)
 
-
-time.sleep(300)
+# Sluit de browser na 5 seconden
+time.sleep(5)
+driver.quit()
