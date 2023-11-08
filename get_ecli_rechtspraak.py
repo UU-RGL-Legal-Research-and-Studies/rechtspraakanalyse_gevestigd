@@ -1,3 +1,5 @@
+#Note: always check /robots.txt at the end of the url before webscraping. This to see whether scraping is permitted
+
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -12,7 +14,7 @@ driver = webdriver.Chrome(service=s)
 
 # Navigate to webpage
 driver.get('https://uitspraken.rechtspraak.nl/#!/resultaat?zoekterm=affectieschade&inhoudsindicatie=zt0&sort=Relevance&publicatiestatus=ps1&uitspraakdatumrange=tussen&uitspraakdatuma=01-01-2019&uitspraakdatumb=31-10-2023&rechtsgebied=r3')
-wait = WebDriverWait(driver, 10)
+wait = WebDriverWait(driver, 5)
 
 while True:
     try:
