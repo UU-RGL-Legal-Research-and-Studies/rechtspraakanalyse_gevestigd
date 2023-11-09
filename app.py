@@ -45,7 +45,7 @@ def api_request(ecli):
     # Laad de XML-root van het tijdelijke bestand
     with open(temp_file.name, 'rb') as temp_file:
         root = ET.parse(temp_file).getroot()
-
+    time.sleep(3)
     return root
 
 @app.route('/start_request', methods=['POST'])
