@@ -10,14 +10,14 @@ import shutil
 import os
 import time
 import re
-from ratelimit import limits, sleep_and_retry
+# from ratelimit import limits, sleep_and_retry
 
 app = Flask(__name__)
 app.secret_key = 'hello_world'
 
 # Maximum requests per minute (to reduce pressure on API-server)
-MAX_REQUESTS = 50 
-ONE_MINUTE = 60
+# MAX_REQUESTS = 50 
+# ONE_MINUTE = 60
 
 # # Sample ECLIs
 ECLIs = unique_list #list from other file where ECLIs have been subtracted (using Webparsing)
@@ -29,8 +29,8 @@ def highlight_term(text, term):
     #return text.replace(term, term)
     return text.replace(term, f'<span class="highlight">{term}</span>')
 
-@sleep_and_retry
-@limits(calls=MAX_REQUESTS, period=ONE_MINUTE)
+# @sleep_and_retry
+# @limits(calls=MAX_REQUESTS, period=ONE_MINUTE)
 def api_request(ecli):
     if ecli in ECLI_cache:
         # Laad de XML-root van het tijdelijke bestand
