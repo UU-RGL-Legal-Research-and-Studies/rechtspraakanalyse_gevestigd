@@ -92,7 +92,7 @@ def index():
                 highlighted_texts.append(text)
             ECLI_texts[ecli] = {'texts': highlighted_texts, 'current_index': 0}
             search_results_count += len(highlighted_texts)  # Update search results count
-
+    update_excel_file()
     return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
 
 def remove_html_tags(text):
