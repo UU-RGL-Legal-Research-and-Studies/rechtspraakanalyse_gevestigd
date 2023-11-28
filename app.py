@@ -32,34 +32,35 @@ def highlight_term(text, term):
 # @sleep_and_retry
 # @limits(calls=MAX_REQUESTS, period=ONE_MINUTE)
 def api_request(ecli):
+    identifier_link = None
+    namespaces = {
+        'rdf': "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        'dcterms': "http://purl.org/dc/terms/",
+    }
+
     if ecli in ECLI_cache:
-        # Laad de XML-root van het tijdelijke bestand
-        with open(ECLI_cache[ecli], 'rb') as temp_file:
-            root = ET.parse(temp_file).getroot()
-        return root
+        temp_file_name = ECLI_cache[ecli]
+        with open(temp_file_name, 'rb') as file:
+            root = ET.parse(file).getroot()
+    else:
+        url = f"https://data.rechtspraak.nl/uitspraken/content?id={ecli}"
+        response = requests.get(url, stream=True)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xml') as temp_file:
+            shutil.copyfileobj(response.raw, temp_file)
+            temp_file_name = temp_file.name
 
-    # Voer de API-aanvraag uit
-    url = f"https://data.rechtspraak.nl/uitspraken/content?id={ecli}"
-    response = requests.get(url, stream=True)
+        ECLI_cache[ecli] = temp_file_name
+        with open(temp_file_name, 'rb') as file:
+            root = ET.parse(file).getroot()
+        time.sleep(3)
 
-    # Maak een tijdelijk bestand en schrijf de respons erin
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.xml') as temp_file:
-        shutil.copyfileobj(response.raw, temp_file)
+    # Zoek naar alle dcterms:identifier tags
+    for identifier_tag in root.findall('.//rdf:Description/dcterms:identifier', namespaces):
+        if identifier_tag.text and identifier_tag.text.startswith('http'):
+            identifier_link = identifier_tag.text
+            break
 
-    # Sla het pad naar het tijdelijke bestand op in de cache
-    ECLI_cache[ecli] = temp_file.name
-
-    # Laad de XML-root van het tijdelijke bestand
-    with open(temp_file.name, 'rb') as temp_file:
-        root = ET.parse(temp_file).getroot()
-    time.sleep(3)
-    return root
-
-@app.route('/start_request', methods=['POST'])
-def start_request():
-    # Simulate API request
-    time.sleep(5)  # Simulate a long API request
-    return '', 200  # Return a success response
+    return root, identifier_link
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -77,7 +78,7 @@ def index():
         
         ECLI_texts = {}
         for ecli in ECLIs:
-            root = api_request(ecli)
+            root, identifier_link = api_request(ecli)
             # Verzamel alle teksten die voldoen aan de zoekcriteria
             texts = [elem.text for elem in root.iter() if elem.text and all(
                 any(synonym.lower() in elem.text.lower() for synonym in term)
@@ -90,7 +91,7 @@ def index():
                     for synonym in term_group:
                         text = highlight_term(text, synonym)
                 highlighted_texts.append(text)
-            ECLI_texts[ecli] = {'texts': highlighted_texts, 'current_index': 0}
+            ECLI_texts[ecli] = {'texts': highlighted_texts, 'identifier_link':identifier_link, 'current_index': 0}
             search_results_count += len(highlighted_texts)  # Update search results count
     update_excel_file()
     return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
@@ -101,16 +102,29 @@ def remove_html_tags(text):
     return re.sub(clean, '', text)
 
 def update_excel_file():
-    df = pd.DataFrame([
-        (ecli, remove_html_tags(texts['texts'][ECLI_texts[ecli]['current_index']]) if texts['texts'] else 'none') 
-        for ecli, texts in ECLI_texts.items()
-    ], columns=['ECLI', 'Result'])
+    # Maak een lijst van tuples voor elke rij in de DataFrame
+    data = []
+    for ecli, texts in ECLI_texts.items():
+        # Verwijder HTML-tags uit de tekst
+        result_text = remove_html_tags(texts['texts'][ECLI_texts[ecli]['current_index']]) if texts['texts'] else 'none'
+        
+        # Haal de link op uit de dictionary
+        link = texts.get('identifier_link', 'No link available')
 
+        # Voeg de gegevens toe aan de lijst
+        data.append((ecli, link, result_text))
+
+    # Maak een DataFrame van de lijst
+    df = pd.DataFrame(data, columns=['ECLI', 'Link', 'Result'])
+
+    # Sla de DataFrame op als Excel-bestand
     with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_file:
         df.to_excel(temp_file, index=False)
 
+    # Sla het pad naar het Excel-bestand op in de sessie
     session['temp_excel_file'] = temp_file.name
     session.modified = True
+
 
 # Voeg ergens in je code een functie toe om het 'vorige' en 'volgende' element te krijgen
 def get_sibling_elements(ecli, index):
