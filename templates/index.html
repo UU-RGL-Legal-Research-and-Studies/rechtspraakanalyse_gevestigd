@@ -132,7 +132,6 @@
                             <input type="submit" value="Search" class="btn btn-secondary mt-2"> <!-- Bootstrap classes for styling -->
                             <label for="search_guidance" 
                                 data-toggle="tooltip" data-placement="right" title="
-                                • De eerste zoekopdracht duurt even. Daarna zijn de uitspraken geladen.<br>
                                 • Gebruik een komma om zoektermen te scheiden.<br>
                                 • Gebruik '|' voor synoniemen (bijv. expert|deskundige).<br>
                                 • Resultaten zijn gebaseerd op aanwezigheid zoektermen in één paragraaf van de uitspraak.<br>
@@ -149,6 +148,7 @@
                             <thead>
                                 <tr>
                                     <th>ECLI</th>
+                                    <th>Link</th> 
                                     <th>Result</th>
                                     <th>Navigate</th>
                                 </tr>
@@ -157,6 +157,7 @@
                                 {% for ecli, data in ECLI_texts.items() %}
                                     <tr>
                                         <td>{{ ecli }}</td>
+                                        <td><a href="{{ ECLI_texts[ecli].identifier_link }}">{{ ECLI_texts[ecli].identifier_link }}</a></td>
                                         <td>{{ (data['texts'][data['current_index']]|safe) if data['texts'] else 'No result' }}</td>
 
                                         <td>
