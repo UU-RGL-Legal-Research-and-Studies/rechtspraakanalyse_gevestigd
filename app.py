@@ -1,132 +1,124 @@
+# Import required modules and libraries
 from flask import Flask, render_template, request, send_file, session, redirect, url_for
 import requests
 import xml.etree.ElementTree as ET
 import pandas as pd
 from io import BytesIO
 import tempfile
-from ECLI_affectieschade1 import unique_list
+from ECLI_affectieschade1 import unique_list  # Import a 'unique_list' function from another file
 import pickle
 import shutil
 import os
 import time
 import re
-# from ratelimit import limits, sleep_and_retry
 
+# Create a Flask application and set a secret key for sessions
 app = Flask(__name__)
 app.secret_key = 'hello_world'
 
-# Maximum requests per minute (to reduce pressure on API-server)
-# MAX_REQUESTS = 50 
-# ONE_MINUTE = 60
+# Define and initialize some variables and data structures
+ECLIs = unique_list  # A list of ECLIs retrieved from the other file
+ECLIs.sort(reverse=True)  # Sort the ECLIs in reverse order
+ECLI_texts = {}  # An empty dictionary to store text data for each ECLI
+ECLI_cache = {}  # A cache for storing XML files of ECLIs
 
-# # Sample ECLIs
-ECLIs = unique_list #list from other file where ECLIs have been subtracted (using Webparsing)
-ECLIs.sort(reverse=True)
-ECLI_texts = {} # ECLI_texts[ecli] = {'texts': [], 'current_index': 0}
-ECLI_cache = {}  # Cache for XML roots
-
+# Define a function to highlight search terms in text
 def highlight_term(text, term):
-    #return text.replace(term, term)
     return text.replace(term, f'<span class="highlight">{term}</span>')
 
-# @sleep_and_retry
-# @limits(calls=MAX_REQUESTS, period=ONE_MINUTE)
+# Define a function to make an API request for a specific ECLI
 def api_request(ecli):
-    identifier_link = None
+    # Define XML namespaces
     namespaces = {
         'rdf': "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
         'dcterms': "http://purl.org/dc/terms/",
     }
 
+    # Check if the ECLI is already cached
     if ecli in ECLI_cache:
+        # If it is, retrieve the XML data from the cache
         temp_file_name = ECLI_cache[ecli]
         with open(temp_file_name, 'rb') as file:
             root = ET.parse(file).getroot()
     else:
+        # If the ECLI is not in the cache, fetch it via the API and save the XML in the cache
         url = f"https://data.rechtspraak.nl/uitspraken/content?id={ecli}"
         response = requests.get(url, stream=True)
         with tempfile.NamedTemporaryFile(delete=False, suffix='.xml') as temp_file:
             shutil.copyfileobj(response.raw, temp_file)
             temp_file_name = temp_file.name
 
-        ECLI_cache[ecli] = temp_file_name
+        ECLI_cache[ecli] = temp_file_name  # Store the file name in the cache
         with open(temp_file_name, 'rb') as file:
             root = ET.parse(file).getroot()
-        time.sleep(3)
+        time.sleep(3)  # Add a 3-second pause to prevent API overload
 
-    # Zoek naar alle dcterms:identifier tags
+    # Look for the dcterms:identifier tags and retrieve the identifier link
+    identifier_link = None
     for identifier_tag in root.findall('.//rdf:Description/dcterms:identifier', namespaces):
         if identifier_tag.text and identifier_tag.text.startswith('http'):
             identifier_link = identifier_tag.text
             break
 
-    return root, identifier_link
+    return root, identifier_link  # Return the XML root and identifier link
 
-
+# Define a route for the main page ("/") of the web application
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    global ECLI_texts  # Declare ECLI_texts as global
+    global ECLI_texts  # Indicate that ECLI_texts should be treated as a global variable
 
-    search_results_count = 0  # Initialize search results count
+    search_results_count = 0  # Initialize the number of search results
 
     if request.method == 'POST':
-        # Verkrijg ruwe zoektermen van de gebruiker
+        # Get raw search terms from the user and process them
         raw_search_terms = request.form.get('search_terms').split(',')
-        # Verwerk de ruwe zoektermen om een lijst van lijsten te maken,
-        # waar elke lijst synoniemen bevat die door de gebruiker zijn ingevoerd
         search_terms = [term.split('|') for term in raw_search_terms]
-        
-        ECLI_texts = {}
+
+        ECLI_texts = {}  # Clear the ECLI_texts dictionary for new search results
+
+        # Iterate over all ECLIs and perform search queries
         for ecli in ECLIs:
-            root, identifier_link = api_request(ecli)
-            # Verzamel alle teksten die voldoen aan de zoekcriteria
+            root, identifier_link = api_request(ecli)  # Fetch the XML data for the current ECLI
             texts = [elem.text for elem in root.iter() if elem.text and all(
                 any(synonym.lower() in elem.text.lower() for synonym in term)
                 for term in search_terms
-            )]
-            # Voeg de gemarkeerde tekst toe
-            highlighted_texts = []
+            )]  # Search for text that meets the search criteria
+            highlighted_texts = []  # List to store highlighted text
             for text in texts:
                 for term_group in search_terms:
                     for synonym in term_group:
-                        text = highlight_term(text, synonym)
+                        text = highlight_term(text, synonym)  # Highlight the search terms in the text
                 highlighted_texts.append(text)
-            ECLI_texts[ecli] = {'texts': highlighted_texts, 'identifier_link':identifier_link, 'current_index': 0}
-            search_results_count += len(highlighted_texts)  # Update search results count
-    update_excel_file()
+            ECLI_texts[ecli] = {'texts': highlighted_texts, 'identifier_link': identifier_link, 'current_index': 0}
+            search_results_count += len(highlighted_texts)  # Update the number of search results
+
+        update_excel_file()  # Update the Excel file with new data
+
     return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
 
+# Define a function to remove HTML tags from a string
 def remove_html_tags(text):
-    """Verwijder HTML-tags uit een string"""
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text)
 
+# Define a function to update the Excel file with search results
 def update_excel_file():
-    # Maak een lijst van tuples voor elke rij in de DataFrame
-    data = []
+    data = []  # A list of tuples for each row in the DataFrame
     for ecli, texts in ECLI_texts.items():
-        # Verwijder HTML-tags uit de tekst
         result_text = remove_html_tags(texts['texts'][ECLI_texts[ecli]['current_index']]) if texts['texts'] else 'none'
-        
-        # Haal de link op uit de dictionary
         link = texts.get('identifier_link', 'No link available')
+        data.append((ecli, link, result_text))  # Add data to the list
 
-        # Voeg de gegevens toe aan de lijst
-        data.append((ecli, link, result_text))
+    df = pd.DataFrame(data, columns=['ECLI', 'Link', 'Result'])  # Create a DataFrame from the data
 
-    # Maak een DataFrame van de lijst
-    df = pd.DataFrame(data, columns=['ECLI', 'Link', 'Result'])
-
-    # Sla de DataFrame op als Excel-bestand
+    # Save the DataFrame as an Excel file
     with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_file:
         df.to_excel(temp_file, index=False)
 
-    # Sla het pad naar het Excel-bestand op in de sessie
-    session['temp_excel_file'] = temp_file.name
+    session['temp_excel_file'] = temp_file.name  # Save the path to the Excel file in the session
     session.modified = True
 
-
-# Voeg ergens in je code een functie toe om het 'vorige' en 'volgende' element te krijgen
+# Define a function to get previous and next elements for a specific ECLI
 def get_sibling_elements(ecli, index):
     root = api_request(ecli)
     current_elem = root.find(f".//*[@index='{index}']")
@@ -134,28 +126,32 @@ def get_sibling_elements(ecli, index):
     next_elem = current_elem.getnext() if current_elem is not None else None
     return prev_elem, next_elem
 
+# Define a route for the previous element ("/previous/<ecli>") of an ECLI
 @app.route('/previous/<ecli>', methods=['GET'])
 def previous(ecli):
     if ecli in ECLI_texts:
         ECLI_texts[ecli]['current_index'] = max(0, ECLI_texts[ecli]['current_index'] - 1)
-    update_excel_file()
+    update_excel_file()  # Update the Excel file
     return redirect(url_for('index'))
 
+# Define a route for the next element ("/next/<ecli>") of an ECLI
 @app.route('/next/<ecli>', methods=['GET'])
 def next(ecli):
     if ecli in ECLI_texts:
         ECLI_texts[ecli]['current_index'] = min(len(ECLI_texts[ecli]['texts']) - 1, ECLI_texts[ecli]['current_index'] + 1)
-    update_excel_file()
+    update_excel_file()  # Update the Excel file
     return redirect(url_for('index'))
 
+# Define a route for deleting an element ("/delete/<ecli>") of an ECLI
 @app.route('/delete/<ecli>', methods=['GET'])
 def delete(ecli):
     if ecli in ECLI_texts:
         del ECLI_texts[ecli]['texts'][ECLI_texts[ecli]['current_index']]
-        ECLI_texts[ecli]['texts'] = [text for text in ECLI_texts[ecli]['texts'] if text]  # remove any empty strings which may occur due to deletion
-    update_excel_file()
+        ECLI_texts[ecli]['texts'] = [text for text in ECLI_texts[ecli]['texts'] if text]  # Remove empty strings
+    update_excel_file()  # Update the Excel file
     return redirect(url_for('index'))
 
+# Define a route to download the Excel file ("/download/excel")
 @app.route('/download/excel', methods=['GET'])
 def download_excel():
     temp_excel_file = session.get('temp_excel_file', None)
@@ -169,9 +165,6 @@ def download_excel():
     else:
         return "No Excel file generated", 404
 
-# Vergeet niet om de tijdelijke bestanden op te ruimen wanneer u klaar bent!
-for temp_file_path in ECLI_cache.values():
-    os.remove(temp_file_path)
-
+# Start the Flask application if the script is run directly
 if __name__ == '__main__':
     app.run(debug=True)
