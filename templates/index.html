@@ -124,7 +124,9 @@
                         
                         <label for="database_select">Select Database:</label>
                         <select id="database_select" name="database" onchange="document.forms[0].submit()">
-                            <option value="db1">Affectieschade 1 Jan. - 30 Nov. 2023 (248 ECLIs)</option>
+                            <option value="db1">Affectieschade 1 Jan. 2021 - 28 Dec. 2023 (835 ECLIs)</option>
+                            <!-- <option value="db2">Affectieschade 1 Jan. - 31 Dec. 2022 (@aantal ECLIs)</option>
+                            <option value="db3">Affectieschade 1 Jan. - 31 Dec. 2021 (@aantal ECLIs)</option>                             -->
                         </select>
                         <form method="post" onsubmit="showLoading();">
                             <label for="search_terms">Search Terms:</label>
@@ -147,6 +149,7 @@
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Date</th>
                                     <th>ECLI</th>
                                     <th>Link</th> 
                                     <th>Result</th>
@@ -156,6 +159,7 @@
                             <tbody>
                                 {% for ecli, data in ECLI_texts.items() %}
                                     <tr>
+                                        <td>{{ ECLI_texts[ecli].date_link }}</td>
                                         <td>{{ ecli }}</td>
                                         <td><a href="{{ ECLI_texts[ecli].identifier_link }}">{{ ECLI_texts[ecli].identifier_link }}</a></td>
                                         <td>{{ (data['texts'][data['current_index']]|safe) if data['texts'] else 'No result' }}</td>
@@ -206,6 +210,11 @@
             hideLoading();  // Hide loading GIF when page is loaded
             // (rest of your onload function)
         }
+
+        window.onload = function() {
+            var scrollPosition = {{ scroll_position }};
+                window.scrollTo(0, scrollPosition);
+        };
 
         function saveScrollPosition() {
             // Store the current scroll position in localStorage before making a request
