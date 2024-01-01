@@ -60,25 +60,28 @@ def api_request(ecli):
             identifier_link = identifier_tag.text
             break
 
-    return root, identifier_link  # Return the XML root and identifier link
+    date_link = None
+    for date_tag in root.findall('.//rdf:Description/dcterms:issued', namespaces):
+        date_link = date_tag.text
+
+
+    return root, identifier_link, date_link  # Return the XML root and identifier link
 
 # Define a route for the main page ("/") of the web application
 @app.route('/', methods=['GET', 'POST'])
 def index():
     global ECLI_texts  # Indicate that ECLI_texts should be treated as a global variable
-
     search_results_count = 0  # Initialize the number of search results
 
     if request.method == 'POST':
         # Get raw search terms from the user and process them
         raw_search_terms = request.form.get('search_terms').split(',')
         search_terms = [term.split('|') for term in raw_search_terms]
-
         ECLI_texts = {}  # Clear the ECLI_texts dictionary for new search results
 
         # Iterate over all ECLIs and perform search queries
         for ecli in ECLIs:
-            root, identifier_link = api_request(ecli)  # Fetch the XML data for the current ECLI
+            root, identifier_link, date_link = api_request(ecli)  # Fetch the XML data for the current ECLI
             texts = [elem.text for elem in root.iter() if elem.text and all(
                 any(synonym.lower() in elem.text.lower() for synonym in term)
                 for term in search_terms
@@ -89,12 +92,22 @@ def index():
                     for synonym in term_group:
                         text = highlight_term(text, synonym)  # Highlight the search terms in the text
                 highlighted_texts.append(text)
-            ECLI_texts[ecli] = {'texts': highlighted_texts, 'identifier_link': identifier_link, 'current_index': 0}
+            ECLI_texts[ecli] = {'texts': highlighted_texts, 'identifier_link': identifier_link, 'current_index': 0, 'date_link':date_link}
             search_results_count += len(highlighted_texts)  # Update the number of search results
 
-        update_excel_file()  # Update the Excel file with new data
+        # Update the Excel file
+        update_excel_file() 
 
-    return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count)
+        # Sla de scrollpositie op in de sessie
+        session['scrollPosition'] = request.form.get('scrollPosition', 0)
+
+        # Redirect naar dezelfde pagina met een GET-verzoek
+        return redirect(url_for('index'))
+
+    # Voor een GET-verzoek
+    scroll_position = session.get('scrollPosition', 0)
+    
+    return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count, scroll_position=scroll_position)
 
 # Define a function to remove HTML tags from a string
 def remove_html_tags(text):
