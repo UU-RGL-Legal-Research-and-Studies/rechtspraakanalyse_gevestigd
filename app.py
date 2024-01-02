@@ -11,6 +11,7 @@ import shutil
 import os
 import time
 import re
+from datetime import datetime
 
 # Create a Flask application and set a secret key for sessions
 app = Flask(__name__)
@@ -63,7 +64,13 @@ def api_request(ecli):
     date_link = None
     for date_tag in root.findall('.//rdf:Description/dcterms:issued', namespaces):
         date_link = date_tag.text
-
+        for date_tag in root.findall('.//rdf:Description/dcterms:issued', namespaces):
+            if date_tag.text:
+                try:
+                    date_link = datetime.strptime(date_tag.text, '%Y-%m-%d').date()
+                except ValueError:
+                # Voeg hier logica toe voor als de datum niet correct is of het formaat niet klopt
+                    date_link = None
 
     return root, identifier_link, date_link  # Return the XML root and identifier link
 
@@ -106,8 +113,11 @@ def index():
 
     # Voor een GET-verzoek
     scroll_position = session.get('scrollPosition', 0)
+
+    #Sort ECLI_text op datum
+    sorted_ECLI_texts = dict(sorted(ECLI_texts.items(), key=lambda item: item[1]['date_link'], reverse=True))
     
-    return render_template('index.html', ECLI_texts=ECLI_texts, search_results_count=search_results_count, scroll_position=scroll_position)
+    return render_template('index.html', ECLI_texts=sorted_ECLI_texts, search_results_count=search_results_count, scroll_position=scroll_position)
 
 # Define a function to remove HTML tags from a string
 def remove_html_tags(text):
@@ -118,11 +128,12 @@ def remove_html_tags(text):
 def update_excel_file():
     data = []  # A list of tuples for each row in the DataFrame
     for ecli, texts in ECLI_texts.items():
+        date = texts.get('date_link', 'No date available')
         result_text = remove_html_tags(texts['texts'][ECLI_texts[ecli]['current_index']]) if texts['texts'] else 'none'
         link = texts.get('identifier_link', 'No link available')
-        data.append((ecli, link, result_text))  # Add data to the list
+        data.append((date, ecli, link, result_text))  # Add data to the list
 
-    df = pd.DataFrame(data, columns=['ECLI', 'Link', 'Result'])  # Create a DataFrame from the data
+    df = pd.DataFrame(data, columns=['Date', 'ECLI', 'Link', 'Result'])  # Create a DataFrame from the data
 
     # Save the DataFrame as an Excel file
     with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_file:
