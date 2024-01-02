@@ -159,7 +159,8 @@
                             <tbody>
                                 {% for ecli, data in ECLI_texts.items() %}
                                     <tr>
-                                        <td>{{ ECLI_texts[ecli].date_link }}</td>
+                                        <td>{{ data.date_link.strftime('%Y-%m-%d') if data.date_link else 'Onbekend' }}</td>
+                                        <!-- <td>{{ ECLI_texts[ecli].date_link }}</td> -->
                                         <td>{{ ecli }}</td>
                                         <td><a href="{{ ECLI_texts[ecli].identifier_link }}">{{ ECLI_texts[ecli].identifier_link }}</a></td>
                                         <td>{{ (data['texts'][data['current_index']]|safe) if data['texts'] else 'No result' }}</td>
@@ -198,24 +199,6 @@
             });
         }
 
-        window.onload = function() {
-            // Check if a scroll position is stored in localStorage and restore it
-            if (localStorage.getItem("scrollPosition")) {
-                window.scrollTo({
-                    top: localStorage.getItem("scrollPosition"),
-                    behavior: 'smooth'  //to ensure the scrolling goes smoothly
-                });
-                localStorage.removeItem("scrollPosition");  // Remove the stored scroll position
-            }
-            hideLoading();  // Hide loading GIF when page is loaded
-            // (rest of your onload function)
-        }
-
-        window.onload = function() {
-            var scrollPosition = {{ scroll_position }};
-                window.scrollTo(0, scrollPosition);
-        };
-
         function saveScrollPosition() {
             // Store the current scroll position in localStorage before making a request
             localStorage.setItem("scrollPosition", window.scrollY);
@@ -235,6 +218,13 @@
             searchForm.action = '/search/' + selectedDatabase;
         }
         
+        window.onload = function() {
+            if (localStorage.getItem("scrollPosition")) {
+                window.scrollTo(0, parseInt(localStorage.getItem("scrollPosition")));
+                localStorage.removeItem("scrollPosition");
+            }
+        };
+
         $(document).ready(function(){
             $('[data-toggle="tooltip"]').tooltip({html: true});
         });
