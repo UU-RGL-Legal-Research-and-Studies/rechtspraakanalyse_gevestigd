@@ -13,7 +13,7 @@ s = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=s)
 
 # Navigate to webpage
-driver.get('https://uitspraken.rechtspraak.nl/#!/resultaat?zoekterm=affectieschade&inhoudsindicatie=zt0&sort=Relevance&publicatiestatus=ps1&uitspraakdatumrange=tussen&uitspraakdatuma=01-01-2019&uitspraakdatumb=31-10-2023&rechtsgebied=r3')
+driver.get('https://uitspraken.rechtspraak.nl/resultaat?zoekterm=gevestigd&inhoudsindicatie=zt0&publicatiestatus=ps1&sort=Relevance&uitspraakdatumrange=tussen&uitspraakdatuma=01-01-2022&uitspraakdatumb=01-01-2023&rechtsgebied=r3')
 wait = WebDriverWait(driver, 5)
 
 while True:
